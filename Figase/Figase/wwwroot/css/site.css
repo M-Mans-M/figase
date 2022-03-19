@@ -69,3 +69,53 @@ body {
   white-space: nowrap;
   line-height: 60px; /* Vertically center the text there */
 }
+
+.summary-danger {
+    padding-bottom: 10px;
+    display: block;
+}
+
+input[type="submit"] {
+    border: 1px solid #aaa;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.auth-panel {
+    width: 360px;
+    margin: auto;
+    padding: 30px;
+    transform: translate(calc(50% - 50%),30%);
+    border: 1px solid silver;
+    border-radius: 5px;
+}
+
+.reg-panel {
+    width: 720px;
+    margin: auto;
+    margin-top: 30px;
+    padding: 30px;
+    transform: translate(calc(50% - 50%));
+    border: 1px solid silver;
+    border-radius: 5px;
+}
+
+.enum-checkbox-item {
+    display: block;
+}
+
+.enum-checkbox-item input {
+    margin-right: 6px;
+}
+
+.form-group select {
+    display: block;
+}
+
+.version {
+    position: absolute;
+    right: 0;
+    color: #aaa;
+}

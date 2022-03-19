@@ -1,0 +1,99 @@
+﻿@using Figase.Context
+@using Figase.Enums
+@using System.ComponentModel
+@using Figase.Utils
+@model RegisterModel
+@{
+    ViewData["Title"] = "Регистрация";
+
+    var genders = Enum.GetValues(typeof(GenderTypes)).Cast<GenderTypes>().Select(e => new { Value = e, Text = e.GetDescription() }).ToList();
+    var gendersItems = new SelectList(genders, "Value", "Text");
+}
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('select').dropdown();
+        });
+    </script>
+}
+
+<div class="reg-panel">
+    <h2>Регистрация</h2>
+    <hr />
+    <form asp-action="Register">
+        <div class="row">
+            <div class="col-md-5">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                @if (!string.IsNullOrEmpty(ViewBag.Message))
+                {
+                    <span class="text-danger">
+                        @ViewBag.Message
+                    </span>
+                }
+                <div class="form-group">
+                    <label asp-for="Login" class="control-label"></label>
+                    <input asp-for="Login" class="form-control" maxlength="100"/>
+                    <span asp-validation-for="Login" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Password" class="control-label"></label>
+                    <input asp-for="Password" type="password" class="form-control" maxlength="100"/>
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="RepeatPassword" class="control-label"></label>
+                    <input asp-for="RepeatPassword" type="password" class="form-control" maxlength="100"/>
+                    <span asp-validation-for="RepeatPassword" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="FirstName" class="control-label"></label>
+                    <input asp-for="FirstName" class="form-control" maxlength="100"/>
+                    <span asp-validation-for="FirstName" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="LastName" class="control-label"></label>
+                    <input asp-for="LastName" class="form-control" maxlength="100"/>
+                    <span asp-validation-for="LastName" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="City" class="control-label"></label>
+                    <input asp-for="City" class="form-control" maxlength="100"/>
+                    <span asp-validation-for="City" class="text-danger"></span>
+                </div>                
+            </div>
+            <div class="col-md-7">
+                <div class="form-group">
+                    <label asp-for="Age" class="control-label"></label>
+                    <select asp-for="Age" asp-items="@(new SelectList(Enumerable.Range(1,255)))">
+                        <option value="">Выберите возраст</option>
+                    </select>
+                    <span asp-validation-for="Age" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Gender" class="control-label"></label>
+                    <select asp-for="Gender" asp-items="@gendersItems">
+                        <option value="">Выберите пол</option>
+                    </select>
+                    <span asp-validation-for="Gender" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Hobby" class="control-label"></label>                    
+                    @foreach(var item in Enum.GetValues(typeof(HobbiesKinds)).Cast<HobbiesKinds>().Skip(1))
+                    {
+                        <label class="enum-checkbox-item">
+                            <input type="checkbox" name="Hobby" value="@item" @Html.Raw((Model.Hobby & item) == item ? "checked=\"checked\"" : "") />@(item.GetDescription())
+                        </label>
+                    }
+                    <span asp-validation-for="Hobby" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group text-center">
+                    <input type="submit" value="Зарегистрироваться" class="btn btn-default" />
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

@@ -1,5 +1,9 @@
+using Figase.Context;
+using Figase.Utils;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,6 +27,16 @@ namespace Figase
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(x => x.LoginPath = "/Home/Login");
+
+            // Other configuration code
+            services.AddMvc(options =>
+            {
+                options.ModelBinderProviders.Insert(0, new FlagsEnumModelBinderProvider());
+            });
+
+            services.AddDbContext<MySqlContext>(options =>
+                options.UseMySQL(Configuration.GetConnectionString("MySqlDatabase")));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -37,11 +51,12 @@ namespace Figase
                 app.UseExceptionHandler("/Home/Error");
             }
             app.UseStaticFiles();
-
+                        
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
-
+            
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(

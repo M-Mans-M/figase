@@ -1,8 +1,28 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@using Figase.Context
+@using Figase.Enums
+@using Figase.Utils
+@model Person
+@{
+    ViewData["Title"] = "Офигеваем вместе!";
+
+    var currentUserHobbies = "ничего не делать...";
+    if (Model != null)
+    {
+        var flags = GetFlags(Model.Hobby);
+        currentUserHobbies = string.Join(", ", flags.Select(e => e.GetDescription())) + "...";
+    }
+}
+@functions {
+    public static IEnumerable<HobbiesKinds> GetFlags(HobbiesKinds value)
+    {
+        foreach (HobbiesKinds item in Enum.GetValues(value.GetType()).Cast<HobbiesKinds>().Skip(1))
+        if (value.HasFlag(item))
+            yield return item;
+    }
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Привет, <b>@(User.Identity.Name)</b></h1>
+    <i>Щас бы @(currentUserHobbies)</i>
+    <p style="margin-top: 10px;">Посидели, пора и домой (<a asp-area="" asp-controller="Home" asp-action="Logout">выход</a>)</p>
 </div>
