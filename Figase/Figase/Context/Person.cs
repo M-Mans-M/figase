@@ -16,25 +16,21 @@ namespace Figase.Context
         /// <summary>
         /// Логин
         /// </summary>
-        [StringLength(256)]
         public string Login { get; set; }
 
         /// <summary>
         /// Пароль
         /// </summary>
-        [StringLength(256)]
         public string Password { get; set; }
 
         /// <summary>
         /// Имя
         /// </summary>
-        [StringLength(100)]
         public string FirstName { get; set; }
 
         /// <summary>
         /// Фамилия
         /// </summary>
-        [StringLength(100)]
         public string LastName { get; set; }
 
         /// <summary>
@@ -55,7 +51,6 @@ namespace Figase.Context
         /// <summary>
         /// Город
         /// </summary>
-        [StringLength(100)]
         public string City { get; set; }
     }
 }

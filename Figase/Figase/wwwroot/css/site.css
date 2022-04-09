@@ -119,3 +119,30 @@ input[type="submit"] {
     right: 0;
     color: #aaa;
 }
+
+
+.search-panel {
+    width: 100%;
+    margin: auto;
+    margin-top: 20px;
+    padding: 30px;
+    transform: translate(calc(50% - 50%));
+    border: 1px solid silver;
+    border-radius: 5px;
+}
+
+.search-panel table {
+    width: 100%;
+}
+
+.search-panel table, .search-panel table th, .search-panel table td {
+    border: 1px solid silver;
+}
+
+.search-panel table th {
+    text-align: center;
+}
+
+.search-panel table th, .search-panel table td {
+    padding: 10px;
+}

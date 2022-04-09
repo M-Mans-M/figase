@@ -1,17 +1,20 @@
 ﻿using Figase.Context;
+using Figase.Enums;
 using Figase.Models;
 using Figase.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+//using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using MySqlConnector;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Figase.Controllers
@@ -33,12 +36,23 @@ namespace Figase.Controllers
             var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             if (Int32.TryParse(userIdRaw, out var userId))
             {
-                var dbContext = serviceProvider.GetService(typeof(MySqlContext)) as MySqlContext;
-                dbContext.Database.EnsureCreated();
+                var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+                await connection.OpenAsync();
 
-                var person = await dbContext.Persons.FirstOrDefaultAsync(p => p.Id == userId);
+                Person person = null;
+                using (var command = new MySqlCommand($"SELECT * FROM Persons WHERE Id = {userId} LIMIT 1", connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            person ??= fetchPerson(reader);
+                        }
+                    };
+                }
+
                 return View(person);
-            }            
+            }
 
             return View(null);
         }
@@ -63,10 +77,21 @@ namespace Figase.Controllers
         {
             if (ModelState.IsValid)
             {
-                var dbContext = serviceProvider.GetService(typeof(MySqlContext)) as MySqlContext;
-                dbContext.Database.EnsureCreated();
+                var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+                await connection.OpenAsync();
 
-                var person = await dbContext.Persons.FirstOrDefaultAsync(p => p.Login.ToLower() == model.Login.ToLower());
+                Person person = null;
+                using (var command = new MySqlCommand($"SELECT * FROM Persons WHERE Login LIKE '{model.Login}' LIMIT 1", connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            person ??= fetchPerson(reader);
+                        }
+                    }
+                }
+
                 if (person == null)
                 {
                     ViewBag.Message = "Пользователь не найден";
@@ -126,10 +151,21 @@ namespace Figase.Controllers
         {
             if (ModelState.IsValid)
             {
-                var dbContext = serviceProvider.GetService(typeof(MySqlContext)) as MySqlContext;
-                
-                // Проверка существования пользователя
-                var person = await dbContext.Persons.FirstOrDefaultAsync(p => p.Login.ToLower() == model.Login.ToLower());
+                var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+                await connection.OpenAsync();
+
+                Person person = null;
+                using (var command = new MySqlCommand($"SELECT * FROM Persons WHERE Login LIKE '{model.Login}' LIMIT 1", connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            person ??= fetchPerson(reader);
+                        }
+                    }
+                }
+
                 if (person != null)
                 {
                     ViewBag.Message = "Логин уже занят";
@@ -150,8 +186,16 @@ namespace Figase.Controllers
                     City = model.City
                 };
 
-                await dbContext.Persons.AddAsync(person);
-                await dbContext.SaveChangesAsync();
+                using (var command = new MySqlCommand($"INSERT INTO Persons (Login, Password, FirstName, LastName, Age, Gender, Hobby, City) VALUES ('{person.Login}','{person.Password}','{person.FirstName}','{person.LastName}',{person.Age},{(int)person.Gender},{(int)person.Hobby},'{person.City}')", connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            person ??= fetchPerson(reader);
+                        }
+                    }
+                }
 
                 // Авторизация
                 var claims = new List<Claim>() {
@@ -164,15 +208,139 @@ namespace Figase.Controllers
                 var principal = new ClaimsPrincipal(identity);
 
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties() { IsPersistent = true });
-                return LocalRedirect("/");                
+                return LocalRedirect("/");
             }
             return View(model);
+        }
+
+        /// <summary>
+        /// Переход на страницу регистрации
+        /// </summary>
+        /// <returns></returns>
+        public IActionResult Search()
+        {
+            var model = new SearchModel();
+            return View(model);
+        }
+
+        /// <summary>
+        /// Обработка запроса авторизации
+        /// </summary>
+        /// <param name="model">Модель авторизации</param>
+        /// <returns></returns>
+        [HttpPost]
+        public async Task<IActionResult> Search(SearchModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+                await connection.OpenAsync();
+
+                var whereClauses = new List<string>();
+                if (!string.IsNullOrEmpty(model.FirstNamePrefix)) whereClauses.Add($"FirstName LIKE '{model.FirstNamePrefix}%'");
+                if (!string.IsNullOrEmpty(model.LastNamePrefix)) whereClauses.Add($"LastName LIKE '{model.FirstNamePrefix}%'");
+                if (model.PageNum <= 0) model.PageNum = 1;
+                if (model.PageSize <= 0) model.PageSize = 30;
+
+                var cmdSb = new StringBuilder("SELECT * FROM Persons");
+                if (whereClauses.Count > 0)
+                {
+                    cmdSb.Append($" WHERE");
+                    cmdSb.Append($" {string.Join(" AND ", whereClauses)}");
+                }
+                cmdSb.Append($" LIMIT {model.PageSize}");
+                cmdSb.Append($" OFFSET {(model.PageNum - 1) * model.PageSize}");
+
+                List<Person> persons = null;
+                using (var command = new MySqlCommand(cmdSb.ToString(), connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            persons ??= new List<Person>();
+
+                            var person = fetchPerson(reader);
+
+                            persons.Add(person);
+                        }
+                    }
+                }
+
+                model.Result = persons;
+            }
+            return View("Search", model);
+        }
+
+        /// <summary>
+        /// Обработка запроса авторизации
+        /// </summary>
+        /// <param name="model">Модель авторизации</param>
+        /// <returns></returns>
+        [HttpPost]
+        public async Task<IActionResult> ApiSearch(SearchModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+                await connection.OpenAsync();
+
+                var whereClauses = new List<string>();
+                if (!string.IsNullOrEmpty(model.FirstNamePrefix)) whereClauses.Add($"FirstName LIKE '{model.FirstNamePrefix}%'");
+                if (!string.IsNullOrEmpty(model.LastNamePrefix)) whereClauses.Add($"LastName LIKE '{model.FirstNamePrefix}%'");
+                if (model.PageNum <= 0) model.PageNum = 1;
+                if (model.PageSize <= 0) model.PageSize = 30;
+
+                var cmdSb = new StringBuilder("SELECT * FROM Persons");
+                if (whereClauses.Count > 0)
+                {
+                    cmdSb.Append($" WHERE");
+                    cmdSb.Append($" {string.Join(" AND ", whereClauses)}");
+                }
+                cmdSb.Append($" LIMIT {model.PageSize}");
+                cmdSb.Append($" OFFSET {(model.PageNum - 1) * model.PageSize}");
+
+                List<Person> persons = null;
+                using (var command = new MySqlCommand(cmdSb.ToString(), connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            persons ??= new List<Person>();
+
+                            var person = fetchPerson(reader);
+
+                            persons.Add(person);
+                        }
+                    }
+                }
+
+                return Ok(persons);
+            }
+            return BadRequest();
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        private Person fetchPerson(MySqlDataReader reader)
+        {
+            var person = new Person();
+            person.Id = (int)reader.GetValue(0);
+            person.Login = reader.GetValue(1) as string;
+            person.Password = reader.GetValue(2) as string;
+            person.FirstName = reader.GetValue(3) as string;
+            person.LastName = reader.GetValue(4) as string;
+            person.Age = (byte)reader.GetValue(5);
+            person.Gender = (GenderTypes)(int)reader.GetValue(6);
+            person.Hobby = (HobbiesKinds)(int)reader.GetValue(7);
+            person.City = reader.GetValue(8) as string;
+
+            return person;
         }
     }
 }

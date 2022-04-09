@@ -1,16 +1,11 @@
-using Figase.Context;
 using Figase.Utils;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using MySqlConnector;
 
 namespace Figase
 {
@@ -35,8 +30,11 @@ namespace Figase
                 options.ModelBinderProviders.Insert(0, new FlagsEnumModelBinderProvider());
             });
 
-            services.AddDbContext<MySqlContext>(options =>
-                options.UseMySQL(Configuration.GetConnectionString("MySqlDatabase")));
+            //services.AddDbContext<MySqlContext>(options =>
+            //    options.UseMySQL(Configuration.GetConnectionString("MySqlDatabase")));
+
+            services.AddTransient<MySqlConnection>(_ => new MySqlConnection(Configuration.GetConnectionString("MySqlDatabase")));
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -32,6 +32,11 @@
                 <div class="form-group text-center">
                     <input type="submit" value="Войти" class="btn btn-default" />
                 </div>
+                <br />
+                <br />
+                <div class="form-group text-center">
+                    <a asp-area="" asp-controller="Home" asp-action="Search">Поиск без авторизации</a>
+                </div>
             </form>
             <div class="version">@Assembly.GetExecutingAssembly().GetName().Version.ToString(3)</div>
         </div>

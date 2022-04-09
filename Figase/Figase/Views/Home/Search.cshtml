@@ -1,0 +1,91 @@
+﻿@using System.Reflection
+@using Figase.Context;
+@model SearchModel
+@{
+    ViewData["Title"] = "Поиск";
+}
+<div class="search-panel">
+    <h3>Поиск</h3>
+    <div class="row">
+        <div class="col-md-12">
+            <form asp-action="Search">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div asp-validation-summary="ModelOnly" class="text-danger summary-danger"></div>
+                        @if (!string.IsNullOrEmpty(ViewBag.Message))
+                        {
+                            <span class="text-danger">
+                                @ViewBag.Message
+                            </span>
+                        }
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="FirstNamePrefix" class="control-label"></label>
+                            <input asp-for="FirstNamePrefix" class="form-control" maxlength="100" />
+                            <span asp-validation-for="FirstNamePrefix" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="LastNamePrefix" class="control-label"></label>
+                            <input asp-for="LastNamePrefix" class="form-control" maxlength="100" />
+                            <span asp-validation-for="LastNamePrefix" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label asp-for="PageSize" class="control-label"></label>
+                            <input asp-for="PageSize" class="form-control" maxlength="100" />
+                            <span asp-validation-for="PageSize" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label asp-for="PageNum" class="control-label"></label>
+                            <input asp-for="PageNum" class="form-control" maxlength="100" />
+                            <span asp-validation-for="PageNum" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row col-md-12">
+                    <div class="form-group text-center">
+                        <input type="submit" value="Поиск" class="btn btn-default" />
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <hr />
+    <h2>Человеки</h2>
+    <table cellpadding="0" cellspacing="0">
+        <tr>
+            <th>Id</th>
+            <th>Имя</th>
+            <th>Фамилия</th>
+            <th>Пол</th>
+            <th>Хобби</th>
+        </tr>
+        @if (Model.Result != null && Model.Result.Count > 0)
+        {
+            foreach (Person person in Model.Result)
+            {
+                <tr>
+                    <td>@person.Id</td>
+                    <td>@person.FirstName</td>
+                    <td>@person.LastName</td>
+                    <td>@person.Gender</td>
+                    <td>@person.Hobby</td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="5">Данных нет</td>
+            </tr>
+        }
+    </table>
+</div>
