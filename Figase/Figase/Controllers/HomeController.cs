@@ -278,7 +278,7 @@ namespace Figase.Controllers
         /// <param name="model">Модель авторизации</param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<IActionResult> ApiSearch(SearchModel model)
+        public async Task<IActionResult> ApiSearch([FromBody] SearchModel model)
         {
             if (ModelState.IsValid)
             {
