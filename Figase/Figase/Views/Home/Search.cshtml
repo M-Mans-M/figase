@@ -142,7 +142,7 @@
                     </td>
                     @if (User.Identity.IsAuthenticated)
                     {
-                        <td>
+                        <td class="td-actions">
                             <a asp-controller="Home" asp-action="Profile" asp-route-id="@person.Id">Профиль</a>
 
                             <a href="#" onclick="subscribe(@person.Id, event)" class="@(!person.Subscribed ? "visible" : "collapsed" )">Подписаться</a>

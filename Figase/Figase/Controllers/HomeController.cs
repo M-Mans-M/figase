@@ -27,7 +27,7 @@ namespace Figase.Controllers
         private readonly KafkaService kafkaService;
         private readonly string newPostTopic = "Posts";
 
-        private static readonly Dictionary<int, List<int>> subsDict = new Dictionary<int, List<int>>();
+        private static readonly Dictionary<int, Dictionary<int, List<PersonPost>>> subsCache = new Dictionary<int, Dictionary<int, List<PersonPost>>>();
 
         public HomeController(ILogger<HomeController> logger, IServiceProvider serviceProvider, KafkaService kafkaService)
         {
@@ -117,6 +117,30 @@ namespace Figase.Controllers
                     return View(model);
                 }
 
+                subsCache[person.Id] = new Dictionary<int, List<PersonPost>>();
+                
+                //Первиичная загрузка кеша постов пользователей н акоторых есть подписка                
+                var mySubs = new List<int>(); // Пользователи на которых я подписан
+                using (var command = new MySqlCommand($"SELECT SubPersonId FROM Subs WHERE PersonId = {person.Id}", connection))
+                using (var reader = await command.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        mySubs.Add((int)reader.GetValue(0));
+
+                foreach (var sub in mySubs) subsCache[person.Id].Add(sub, new List<PersonPost>());
+
+                // Одноразовая инициализация кеша при авторизации (дальше кеш будет обновляться реакцией на посты в кафке)
+                if (mySubs.Count > 0)
+                {
+                    var mySubsPosts = new List<PersonPost>();
+                    using (var command = new MySqlCommand($"SELECT * FROM Posts WHERE PersonId IN ({string.Join(", ", mySubs)}) LIMIT 100", connection))
+                    using (var reader = await command.ExecuteReaderAsync())
+                        while (await reader.ReadAsync())
+                            mySubsPosts.Add(fetchPost(reader));
+
+                    foreach (var postsGroupedByPersonId in mySubsPosts.GroupBy(p => p.PersonId))                    
+                        subsCache[person.Id][postsGroupedByPersonId.Key].AddRange(postsGroupedByPersonId);                    
+                }
+
                 var claims = new List<Claim>() {
                 new Claim(ClaimTypes.NameIdentifier, Convert.ToString(person.Id)),
                         new Claim(ClaimTypes.Name, person.FirstName),
@@ -137,10 +161,17 @@ namespace Figase.Controllers
         /// Выход из системы
         /// </summary>
         /// <returns></returns>
+        [Authorize]
         public async Task<IActionResult> LogOut()
         {
+            var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userId = Int32.Parse(userIdRaw);
+
             // Деавторизация    
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            subsCache.Remove(userId);
+
             return RedirectToAction("Search");
         }
 
@@ -210,6 +241,8 @@ namespace Figase.Controllers
                     }
                 }
 
+                subsCache[person.Id] = new Dictionary<int, List<PersonPost>>();
+
                 // Авторизация
                 var claims = new List<Claim>() {
                 new Claim(ClaimTypes.NameIdentifier, Convert.ToString(person.Id)),
@@ -222,7 +255,7 @@ namespace Figase.Controllers
 
                 await connection.CloseAsync();
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties() { IsPersistent = true });
-                return LocalRedirect("Search");
+                return LocalRedirect("~/");
             }
             return View(model);
         }
@@ -269,12 +302,12 @@ namespace Figase.Controllers
                 var userId = Int32.Parse(userIdRaw);
 
                 // Найти всех на кого подписан этот пользователь
-                var usersSubbedToMe = new List<int>();
-                using (var command = new MySqlCommand($"SELECT * FROM Subs WHERE PersonId = {userId}", connection))
-                using (var reader = await command.ExecuteReaderAsync())
-                    while (await reader.ReadAsync())
-                        usersSubbedToMe.Add((int)reader.GetValue(1));
-                subsDict[userId] = usersSubbedToMe;
+                //var usersSubbedToMe = new List<int>();
+                //using (var command = new MySqlCommand($"SELECT * FROM Subs WHERE PersonId = {userId}", connection))
+                //using (var reader = await command.ExecuteReaderAsync())
+                //    while (await reader.ReadAsync())
+                //        usersSubbedToMe.Add((int)reader.GetValue(1));
+                //subsCache[userId] = usersSubbedToMe;
 
                 List<PersonViewModel> personsViewModels = null;
                 using (var command = new MySqlCommand(cmdSb.ToString(), connection))
@@ -285,10 +318,10 @@ namespace Figase.Controllers
                         {
                             personsViewModels ??= new List<PersonViewModel>();
                             var person = fetchPerson(reader);
-                            
+
                             var viewModel = new PersonViewModel(person);
-                            if (subsDict.TryGetValue(userId, out var subsList))
-                                viewModel.Subscribed = subsList.Contains(viewModel.Id);
+                            if (subsCache.TryGetValue(userId, out var subsList))
+                                viewModel.Subscribed = subsList.ContainsKey(viewModel.Id);
 
                             personsViewModels.Add(viewModel);
                         }
@@ -393,10 +426,12 @@ namespace Figase.Controllers
 
             var posts = new List<PersonPost>();
             using (var command = new MySqlCommand($"SELECT * FROM Posts WHERE PersonId = {userId} ORDER BY Created DESC LIMIT 10;", connection))
-                using (var reader = await command.ExecuteReaderAsync())
-                    while (await reader.ReadAsync())
-                        posts.Add(fetchPost(reader));
+            using (var reader = await command.ExecuteReaderAsync())
+                while (await reader.ReadAsync())
+                    posts.Add(fetchPost(reader));
             result.Posts = posts;
+
+            result.SubPosts = subsCache[userId].SelectMany(c => c.Value).OrderByDescending(p => p.Created).ToList();
 
             await connection.CloseAsync();
             return View(result);
@@ -404,6 +439,12 @@ namespace Figase.Controllers
 
         private void processNewPost(string message)
         {
+            var personPost = Newtonsoft.Json.JsonConvert.DeserializeObject<PersonPost>(message);
+
+            foreach (var sub in subsCache)
+                if (sub.Value.TryGetValue(personPost.PersonId, out var cachedPosts))
+                    cachedPosts.Add(personPost);
+
             Debug.WriteLine("KAFKA: " + message);
         }
 
@@ -440,7 +481,7 @@ namespace Figase.Controllers
                 await command.ExecuteReaderAsync();
             }
 
-            subsDict[userId].Add(subPersonId);
+            subsCache[userId].Add(subPersonId, new List<PersonPost>());
             await connection.CloseAsync();
 
             await createPostAsync(userId, $"Подписался на пользователя {subPersonId}");
@@ -480,7 +521,7 @@ namespace Figase.Controllers
                 await command.ExecuteReaderAsync();
             }
 
-            subsDict[userId].Remove(subPersonId);
+            subsCache[userId].Remove(subPersonId);
 
             await connection.CloseAsync();
 
@@ -508,8 +549,8 @@ namespace Figase.Controllers
                 tran = connection.BeginTransaction();
 
                 using (var command = new MySqlCommand($"INSERT INTO Posts(PersonId, Created, Content) VALUES({post.PersonId}, '{post.Created.ToString("yyyy-MM-dd HH:mm:ss")}', '{post.Content.Replace("'", "''")}');", connection, tran))
-                    using (var reader = await command.ExecuteReaderAsync())
-                        await reader.ReadAsync();
+                using (var reader = await command.ExecuteReaderAsync())
+                    await reader.ReadAsync();
 
                 using (var command = new MySqlCommand($"SELECT LAST_INSERT_ID();", connection, tran))
                 {
@@ -581,11 +622,12 @@ namespace Figase.Controllers
 
             return sub;
         }
-        
+
         private PersonPost fetchPost(MySqlDataReader reader)
         {
             var sub = new PersonPost();
             sub.Id = GetValue<int>(reader.GetValue(0));
+            sub.PersonId = GetValue<int>(reader.GetValue(1));
             sub.Created = GetValue<DateTime>(reader.GetValue(2));
             sub.Content = GetValue<string>(reader.GetValue(3));
 

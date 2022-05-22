@@ -157,10 +157,6 @@ input[type="submit"] {
     margin: 0 5px;
 }
 
-.collapsed {
-    display: none;
-}
-
 .new-post input[type="button"] {
     float: right;
 }
@@ -171,4 +167,17 @@ input[type="submit"] {
     margin-left: 15px;
     font-size: 12px;
     margin-top: 5px
+}
+
+.row.post span.post-person {
+    margin-right: 10px;
+    font-style: italic;
+}
+
+.td-actions > * {
+    display: block;
+}
+
+.collapsed {
+    display: none;
 }

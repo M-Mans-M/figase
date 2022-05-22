@@ -133,7 +133,7 @@
         foreach (var post in Model.SubPosts)
         {
             <div class="row post" title="ID: @post.Id">
-                <span class="post-created">@post.Created</span> <span title="Источник" class="post-person">@post.PersonId</span> @post.Content
+                <span class="post-created">@post.Created</span> <span title="Источник" class="post-person">[@post.PersonId]</span> @post.Content
             </div>
         }
     }
