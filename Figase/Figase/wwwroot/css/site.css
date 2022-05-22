@@ -156,3 +156,19 @@ input[type="submit"] {
 .nav-block * {
     margin: 0 5px;
 }
+
+.collapsed {
+    display: none;
+}
+
+.new-post input[type="button"] {
+    float: right;
+}
+
+.row.post span.post-created {
+    color: gray;
+    margin-right: 10px;
+    margin-left: 15px;
+    font-size: 12px;
+    margin-top: 5px
+}

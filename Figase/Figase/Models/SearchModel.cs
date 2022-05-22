@@ -37,6 +37,6 @@ namespace Figase.Models
         /// <summary>
         /// Результат поиска
         /// </summary>
-        public List<Person> Result { get; set; }
+        public List<PersonViewModel> Result { get; set; }
     }
 }

@@ -24,15 +24,27 @@ namespace Figase.Controllers
         private readonly ILogger<HomeController> logger;
         private readonly IServiceProvider serviceProvider;
 
-        public HomeController(ILogger<HomeController> logger, IServiceProvider serviceProvider)
+        private readonly KafkaService kafkaService;
+        private readonly string newPostTopic = "Posts";
+
+        private static readonly Dictionary<int, List<int>> subsDict = new Dictionary<int, List<int>>();
+
+        public HomeController(ILogger<HomeController> logger, IServiceProvider serviceProvider, KafkaService kafkaService)
         {
             this.logger = logger;
             this.serviceProvider = serviceProvider;
+
+            if (this.kafkaService == null)
+            {
+                this.kafkaService = kafkaService;
+                kafkaService.Subscribe(newPostTopic, processNewPost);
+            }
         }
 
         [Authorize]
+        [Obsolete("Не используется")]
         public async Task<IActionResult> Index()
-        {            
+        {
             var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             if (Int32.TryParse(userIdRaw, out var userId))
             {
@@ -114,6 +126,7 @@ namespace Figase.Controllers
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var principal = new ClaimsPrincipal(identity);
 
+                await connection.CloseAsync();
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties() { IsPersistent = true });
                 return LocalRedirect("/");
             }
@@ -207,6 +220,7 @@ namespace Figase.Controllers
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var principal = new ClaimsPrincipal(identity);
 
+                await connection.CloseAsync();
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties() { IsPersistent = true });
                 return LocalRedirect("Search");
             }
@@ -251,23 +265,38 @@ namespace Figase.Controllers
                 cmdSb.Append($" LIMIT {model.PageSize}");
                 cmdSb.Append($" OFFSET {(model.PageNum - 1) * model.PageSize}");
 
-                List<Person> persons = null;
+                var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var userId = Int32.Parse(userIdRaw);
+
+                // Найти всех на кого подписан этот пользователь
+                var usersSubbedToMe = new List<int>();
+                using (var command = new MySqlCommand($"SELECT * FROM Subs WHERE PersonId = {userId}", connection))
+                using (var reader = await command.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        usersSubbedToMe.Add((int)reader.GetValue(1));
+                subsDict[userId] = usersSubbedToMe;
+
+                List<PersonViewModel> personsViewModels = null;
                 using (var command = new MySqlCommand(cmdSb.ToString(), connection))
                 {
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            persons ??= new List<Person>();
-
+                            personsViewModels ??= new List<PersonViewModel>();
                             var person = fetchPerson(reader);
+                            
+                            var viewModel = new PersonViewModel(person);
+                            if (subsDict.TryGetValue(userId, out var subsList))
+                                viewModel.Subscribed = subsList.Contains(viewModel.Id);
 
-                            persons.Add(person);
+                            personsViewModels.Add(viewModel);
                         }
                     }
                 }
 
-                model.Result = persons;
+                await connection.CloseAsync();
+                model.Result = personsViewModels;
             }
             return View("Search", model);
         }
@@ -316,6 +345,7 @@ namespace Figase.Controllers
                     }
                 }
 
+                await connection.CloseAsync();
                 return Ok(persons);
             }
             return BadRequest();
@@ -327,6 +357,11 @@ namespace Figase.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
+        /// <summary>
+        /// Показать профиль пользователя
+        /// </summary>
+        /// <param name="id">Идентификатор пользователя</param>
+        /// <returns></returns>
         [Authorize]
         public async Task<IActionResult> Profile(int? id = null)
         {
@@ -354,23 +389,214 @@ namespace Figase.Controllers
                 };
             }
 
-            return View(person);
+            var result = new PersonViewModel(person);
+
+            var posts = new List<PersonPost>();
+            using (var command = new MySqlCommand($"SELECT * FROM Posts WHERE PersonId = {userId} ORDER BY Created DESC LIMIT 10;", connection))
+                using (var reader = await command.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        posts.Add(fetchPost(reader));
+            result.Posts = posts;
+
+            await connection.CloseAsync();
+            return View(result);
         }
 
+        private void processNewPost(string message)
+        {
+            Debug.WriteLine("KAFKA: " + message);
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> Subscribe(int subPersonId)
+        {
+            if (subPersonId == 0) return BadRequest();
+
+            var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userId = Int32.Parse(userIdRaw);
+
+            var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+            await connection.OpenAsync();
+
+            // Поищем дубликат
+            int count = 0;
+            using (var command = new MySqlCommand($"SELECT COUNT(*) FROM Subs WHERE PersonId = {userId} AND SubPersonId = {subPersonId} LIMIT 1", connection))
+            {
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        count = GetValue<int>(reader.GetValue(0));
+                    }
+                }
+            }
+
+            if (count != 0)
+                return Conflict();
+
+            using (var command = new MySqlCommand($"INSERT INTO Subs (PersonId, SubPersonId) VALUES ({userId},{subPersonId})", connection))
+            {
+                await command.ExecuteReaderAsync();
+            }
+
+            subsDict[userId].Add(subPersonId);
+            await connection.CloseAsync();
+
+            await createPostAsync(userId, $"Подписался на пользователя {subPersonId}");
+            return Ok("");
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> Unsubscribe(int subPersonId)
+        {
+            if (subPersonId == 0) return BadRequest();
+
+            var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userId = Int32.Parse(userIdRaw);
+
+            var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+            await connection.OpenAsync();
+
+            // Поищем дубликат
+            int count = 0;
+            using (var command = new MySqlCommand($"SELECT COUNT(*) FROM Subs WHERE PersonId = {userId} AND SubPersonId = {subPersonId} LIMIT 1", connection))
+            {
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        count = GetValue<int>(reader.GetValue(0));
+                    }
+                }
+            }
+
+            if (count == 0)
+                return Conflict();
+
+            using (var command = new MySqlCommand($"DELETE FROM Subs WHERE PersonId = {userId} AND SubPersonId = {subPersonId}", connection))
+            {
+                await command.ExecuteReaderAsync();
+            }
+
+            subsDict[userId].Remove(subPersonId);
+
+            await connection.CloseAsync();
+
+            await createPostAsync(userId, $"Отписался от пользователя {subPersonId}");
+            return Ok("");
+        }
+
+        private async Task<int> createPostAsync(int personId, string content)
+        {
+            var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+            if (connection.State != System.Data.ConnectionState.Open) await connection.OpenAsync();
+
+            var post = new PersonPost
+            {
+                Content = content,
+                PersonId = personId,
+                Created = DateTime.Now
+            };
+
+            int addedId = 0;
+
+            MySqlTransaction tran = null;
+            try
+            {
+                tran = connection.BeginTransaction();
+
+                using (var command = new MySqlCommand($"INSERT INTO Posts(PersonId, Created, Content) VALUES({post.PersonId}, '{post.Created.ToString("yyyy-MM-dd HH:mm:ss")}', '{post.Content.Replace("'", "''")}');", connection, tran))
+                    using (var reader = await command.ExecuteReaderAsync())
+                        await reader.ReadAsync();
+
+                using (var command = new MySqlCommand($"SELECT LAST_INSERT_ID();", connection, tran))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            addedId = GetValue<int>(reader.GetValue(0));
+                        }
+                    }
+                }
+
+                tran.Commit();
+            }
+            catch (Exception ex)
+            {
+                tran?.Rollback();
+            }
+
+            await connection.CloseAsync();
+
+            post.Id = addedId;
+            await kafkaService.ProduceAsync(newPostTopic, Newtonsoft.Json.JsonConvert.SerializeObject(post));
+
+            return addedId;
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> SendNewPost(SendNewPostModel model)
+        {
+            if (string.IsNullOrEmpty(model?.Message)) return BadRequest();
+
+            var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userId = Int32.Parse(userIdRaw);
+
+            await createPostAsync(userId, model.Message);
+            return Ok();
+        }
+
+        #region DatabaseMapping
+
+        /// <summary>
+        /// Маппинг прочитанной строки из БД в модель пользователя
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
         private Person fetchPerson(MySqlDataReader reader)
         {
             var person = new Person();
-            person.Id = (int)reader.GetValue(0);
-            person.Login = reader.GetValue(1) as string;
-            person.Password = reader.GetValue(2) as string;
-            person.FirstName = reader.GetValue(3) as string;
-            person.LastName = reader.GetValue(4) as string;
-            person.Age = (byte)reader.GetValue(5);
-            person.Gender = (GenderTypes)(int)reader.GetValue(6);
-            person.Hobby = (HobbiesKinds)(int)reader.GetValue(7);
-            person.City = reader.GetValue(8) as string;
+            person.Id = GetValue<int>(reader.GetValue(0));
+            person.Login = GetValue<string>(reader.GetValue(1));
+            person.Password = GetValue<string>(reader.GetValue(2));
+            person.FirstName = GetValue<string>(reader.GetValue(3));
+            person.LastName = GetValue<string>(reader.GetValue(4));
+            person.Age = GetValue<byte>(reader.GetValue(5));
+            person.Gender = (GenderTypes)GetValue<int>(reader.GetValue(6));
+            person.Hobby = (HobbiesKinds)GetValue<int>(reader.GetValue(7));
+            person.City = GetValue<string>(reader.GetValue(8));
 
             return person;
         }
+
+        private PersonSub fetchSubs(MySqlDataReader reader)
+        {
+            var sub = new PersonSub();
+            sub.PersonId = GetValue<int>(reader.GetValue(0));
+            sub.SubPersonId = GetValue<int>(reader.GetValue(1));
+
+            return sub;
+        }
+        
+        private PersonPost fetchPost(MySqlDataReader reader)
+        {
+            var sub = new PersonPost();
+            sub.Id = GetValue<int>(reader.GetValue(0));
+            sub.Created = GetValue<DateTime>(reader.GetValue(2));
+            sub.Content = GetValue<string>(reader.GetValue(3));
+
+            return sub;
+        }
+
+        private T GetValue<T>(object value)
+        {
+            return (T)Convert.ChangeType(value, typeof(T));
+        }
+
+        #endregion DatabaseMapping
     }
 }

@@ -1,3 +1,4 @@
+using Figase.Options;
 using Figase.Utils;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -35,6 +36,8 @@ namespace Figase
 
             services.AddTransient<MySqlConnection>(_ => new MySqlConnection(Configuration.GetConnectionString("MySqlDatabase")));
 
+            services.Configure<KafkaOptions>(Configuration.GetSection(KafkaOptions.Section));
+            services.AddSingleton<KafkaService, KafkaService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

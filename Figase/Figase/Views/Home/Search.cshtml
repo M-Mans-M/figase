@@ -7,6 +7,41 @@
 @{
     ViewData["Title"] = "Поиск";
 }
+@section Scripts {
+<script type="text/javascript">
+    $(document).ready(function() {
+
+    });
+
+    function subscribe(targetId, e) {
+        $.post('@(Url.Action("Subscribe", "Home", null))?subPersonId=' + targetId, function(response) {
+            e.target.parentElement.children[1].classList.add('collapsed');
+            e.target.parentElement.children[1].classList.remove('visible');
+
+            e.target.parentElement.children[2].classList.add('visible');
+            e.target.parentElement.children[2].classList.remove('collapsed');
+
+            alert("Успешно!");
+          }).fail(function(response) {
+            alert("Ошибка " + response.status + "!");
+          });
+    }
+    function unsubscribe(targetId, e) {
+        $.post('@(Url.Action("Unsubscribe", "Home", null))?subPersonId=' + targetId, function(response) {
+            e.target.parentElement.children[1].classList.add('visible');
+            e.target.parentElement.children[1].classList.remove('collapsed');
+
+            e.target.parentElement.children[2].classList.add('collapsed');
+            e.target.parentElement.children[2].classList.remove('visible');
+
+            alert("Успешно!");
+          }).fail(function(response) {
+            alert("Ошибка " + response.status + "!");
+          });
+    }
+</script>
+}
+
 <div class="search-panel">
     <h3>Поиск</h3>
     <div class="row">
@@ -19,7 +54,7 @@
             else
             {
                 <span><b>@(User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "Unknown")</b> </span>
-                <a asp-controller="Home" asp-action="Profile">Профиль</a>                
+                <a asp-controller="Home" asp-action="Profile">Профиль</a>
                 <a asp-controller="Home" asp-action="Logout">Выйти</a>
             }
         </div>
@@ -90,7 +125,7 @@
         </tr>
         @if (Model.Result != null && Model.Result.Count > 0)
         {
-            foreach (Person person in Model.Result)
+            foreach (PersonViewModel person in Model.Result)
             {
                 <tr>
                     <td>@person.Id</td>
@@ -98,15 +133,20 @@
                     <td>@person.LastName</td>
                     <td>@person.Gender.GetDescription()</td>
                     @*<td>@person.Hobby</td>*@
-                    <td>@{
+                    <td>
+                        @{
                             var personHobbies = new List<HobbiesKinds>();
                             foreach (var item in Enum.GetValues(typeof(HobbiesKinds)).Cast<HobbiesKinds>().Skip(1)) if (person.Hobby.HasFlag(item)) personHobbies.Add(item);
                             <span>@string.Join(", ", personHobbies.Select(h => h.GetDescription()))</span>
-                    }</td>
+                        }
+                    </td>
                     @if (User.Identity.IsAuthenticated)
                     {
                         <td>
                             <a asp-controller="Home" asp-action="Profile" asp-route-id="@person.Id">Профиль</a>
+
+                            <a href="#" onclick="subscribe(@person.Id, event)" class="@(!person.Subscribed ? "visible" : "collapsed" )">Подписаться</a>
+                            <a href="#" onclick="unsubscribe(@person.Id, event)" class="@(person.Subscribed ? "visible" : "collapsed" )">Отписаться</a>
                         </td>
                     }
                 </tr>

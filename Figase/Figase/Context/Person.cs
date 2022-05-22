@@ -1,4 +1,5 @@
 ﻿using Figase.Enums;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Figase.Context
@@ -52,5 +53,10 @@ namespace Figase.Context
         /// Город
         /// </summary>
         public string City { get; set; }
+
+        /// <summary>
+        /// Список идентификаторов пользователей на которых подписан этот пользователь
+        /// </summary>
+        public List<int> Subscribes { get; set; }
     }
 }
