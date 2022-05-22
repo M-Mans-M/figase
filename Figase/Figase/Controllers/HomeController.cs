@@ -431,7 +431,10 @@ namespace Figase.Controllers
                     posts.Add(fetchPost(reader));
             result.Posts = posts;
 
-            result.SubPosts = subsCache[userId].SelectMany(c => c.Value).OrderByDescending(p => p.Created).ToList();
+            if (subsCache.ContainsKey(userId))
+            {
+                result.SubPosts = subsCache[userId].SelectMany(c => c.Value).OrderByDescending(p => p.Created).ToList();
+            }
 
             await connection.CloseAsync();
             return View(result);
