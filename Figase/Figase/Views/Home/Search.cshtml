@@ -1,5 +1,8 @@
 ﻿@using System.Reflection
 @using Figase.Context;
+@using System.Security.Claims
+@using Figase.Enums
+@using Figase.Utils
 @model SearchModel
 @{
     ViewData["Title"] = "Поиск";
@@ -7,6 +10,19 @@
 <div class="search-panel">
     <h3>Поиск</h3>
     <div class="row">
+        <div class="nav-block">
+            @if (!User.Identity.IsAuthenticated)
+            {
+                <span><b>Пользователь не авторизован</b> </span>
+                <a asp-area="" asp-controller="Home" asp-action="Login">Вход</a>
+            }
+            else
+            {
+                <span><b>@(User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "Unknown")</b> </span>
+                <a asp-controller="Home" asp-action="Profile">Профиль</a>                
+                <a asp-controller="Home" asp-action="Logout">Выйти</a>
+            }
+        </div>
         <div class="col-md-12">
             <form asp-action="Search">
                 <div class="row">
@@ -67,6 +83,10 @@
             <th>Фамилия</th>
             <th>Пол</th>
             <th>Хобби</th>
+            @if (User.Identity.IsAuthenticated)
+            {
+                <th>Действие</th>
+            }
         </tr>
         @if (Model.Result != null && Model.Result.Count > 0)
         {
@@ -76,15 +96,26 @@
                     <td>@person.Id</td>
                     <td>@person.FirstName</td>
                     <td>@person.LastName</td>
-                    <td>@person.Gender</td>
-                    <td>@person.Hobby</td>
+                    <td>@person.Gender.GetDescription()</td>
+                    @*<td>@person.Hobby</td>*@
+                    <td>@{
+                            var personHobbies = new List<HobbiesKinds>();
+                            foreach (var item in Enum.GetValues(typeof(HobbiesKinds)).Cast<HobbiesKinds>().Skip(1)) if (person.Hobby.HasFlag(item)) personHobbies.Add(item);
+                            <span>@string.Join(", ", personHobbies.Select(h => h.GetDescription()))</span>
+                    }</td>
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <td>
+                            <a asp-controller="Home" asp-action="Profile" asp-route-id="@person.Id">Профиль</a>
+                        </td>
+                    }
                 </tr>
             }
         }
         else
         {
             <tr>
-                <td colspan="5">Данных нет</td>
+                <td colspan="@(User.Identity.IsAuthenticated ? 6 : 5)">Данных нет</td>
             </tr>
         }
     </table>

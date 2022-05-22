@@ -23,11 +23,15 @@ namespace Figase.Models
         /// <summary>
         /// Максимальное количество записей
         /// </summary>
+        [Display(Name = "Размер страницы")]
+        [Range(1, 1000)]
         public int PageSize { get; set; } = 30;
 
         /// <summary>
         /// Номер страницы
         /// </summary>
+        [Display(Name = "Страница")]
+        [Range(1, 1000)]
         public int PageNum { get; set; } = 1;
 
         /// <summary>

@@ -32,7 +32,7 @@ namespace Figase.Controllers
 
         [Authorize]
         public async Task<IActionResult> Index()
-        {
+        {            
             var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             if (Int32.TryParse(userIdRaw, out var userId))
             {
@@ -128,7 +128,7 @@ namespace Figase.Controllers
         {
             // Деавторизация    
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login");
+            return RedirectToAction("Search");
         }
 
         /// <summary>
@@ -208,7 +208,7 @@ namespace Figase.Controllers
                 var principal = new ClaimsPrincipal(identity);
 
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties() { IsPersistent = true });
-                return LocalRedirect("/");
+                return LocalRedirect("Search");
             }
             return View(model);
         }
@@ -325,6 +325,36 @@ namespace Figase.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        [Authorize]
+        public async Task<IActionResult> Profile(int? id = null)
+        {
+            int userId = 0;
+            if (id == null)
+            {
+                var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                userId = Int32.Parse(userIdRaw);
+            }
+            else
+                userId = id.Value;
+
+            var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+            await connection.OpenAsync();
+
+            Person person = null;
+            using (var command = new MySqlCommand($"SELECT * FROM Persons WHERE Id = {userId} LIMIT 1", connection))
+            {
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        person ??= fetchPerson(reader);
+                    }
+                };
+            }
+
+            return View(person);
         }
 
         private Person fetchPerson(MySqlDataReader reader)

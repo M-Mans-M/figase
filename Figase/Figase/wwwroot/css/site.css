@@ -146,3 +146,13 @@ input[type="submit"] {
 .search-panel table th, .search-panel table td {
     padding: 10px;
 }
+
+.nav-block {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+}
+
+.nav-block * {
+    margin: 0 5px;
+}

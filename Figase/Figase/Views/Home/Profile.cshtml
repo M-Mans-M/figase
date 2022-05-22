@@ -1,0 +1,78 @@
+﻿@using System.Reflection
+@using Figase.Context;
+@using System.Security.Claims
+@using Figase.Enums
+@using Figase.Utils
+@model Person
+@{
+    ViewData["Title"] = $"Профиль ({(Model == null ? "Неизвестная жаба" : Model.FirstName)})";
+}
+<div class="search-panel">
+    <h3>Профиль пользователя</h3>
+    <div class="row">
+        <div class="nav-block">
+            @if (!User.Identity.IsAuthenticated)
+            {
+                <span><b>Пользователь не авторизован</b> </span>
+                <a asp-area="" asp-controller="Home" asp-action="Login">Вход</a>
+            }
+            else
+            {
+                <span><b>@(User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "Unknown")</b> </span>
+                <a asp-controller="Home" asp-action="Profile">Профиль</a>
+                <a asp-controller="Home" asp-action="Search">На главную</a>
+                <a asp-controller="Home" asp-action="Logout">Выйти</a>
+            }
+        </div>
+        <div class="col-md-12">
+            <form>
+                <div class="row">
+                    <div class="col-md-4">                        
+                        <div class="form-group">
+                            <label asp-for="Login" class="control-label"></label>
+                            <input asp-for="Login" class="form-control" maxlength="100" readonly="true"/>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="FirstName" class="control-label"></label>
+                            <input asp-for="FirstName" class="form-control" maxlength="100" readonly="true" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="LastName" class="control-label"></label>
+                            <input asp-for="LastName" class="form-control" maxlength="100" readonly="true" />
+                        </div>                        
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="City" class="control-label"></label>
+                            <input asp-for="City" class="form-control" maxlength="100" readonly="true" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Age" class="control-label"></label>
+                            <input asp-for="Age" class="form-control" maxlength="100" readonly="true" />
+                        </div>                        
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="Gender" class="control-label"></label>
+                            <input asp-for="Gender" class="form-control" maxlength="100" readonly="true" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Hobby" class="control-label"></label>
+                            @{
+                                    var personHobbies = new List<HobbiesKinds>();
+                                    foreach (var item in Enum.GetValues(typeof(HobbiesKinds)).Cast<HobbiesKinds>().Skip(1)) if (Model.Hobby.HasFlag(item)) personHobbies.Add(item);
+                                    //<span>@string.Join(", ", personHobbies.Select(h => h.GetDescription()))</span>
+                                    <input class="form-control" maxlength="100" readonly="true" value="@string.Join(", ", personHobbies.Select(h => h.GetDescription()))" />
+                            }
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <hr />
+    <h2>Посты</h2>
+    <div class="row">
+        Пока ничего нет
+    </div>
+</div>
