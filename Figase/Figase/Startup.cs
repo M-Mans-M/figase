@@ -1,4 +1,6 @@
+using Figase.Hubs;
 using Figase.Options;
+using Figase.Services;
 using Figase.Utils;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -38,6 +40,9 @@ namespace Figase
 
             services.Configure<KafkaOptions>(Configuration.GetSection(KafkaOptions.Section));
             services.AddSingleton<KafkaService, KafkaService>();
+            services.AddSingleton<MainService, MainService>();
+
+            services.AddSignalR();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -63,6 +68,7 @@ namespace Figase
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Home}/{action=Search}/{id?}");
+                endpoints.MapHub<NewsHub>("/newsHub");
             });
         }
     }

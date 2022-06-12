@@ -8,6 +8,8 @@
     ViewData["Title"] = $"Профиль ({(Model == null ? "Неизвестная жаба" : Model.FirstName)})";
 }
 @section Scripts {
+<script src="~/js/signalr/dist/browser/signalr.js"></script>
+<script src="~/js/news.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
 
@@ -105,9 +107,10 @@
             </div>
         </div>
     }
+
     @if (Model.Posts == null || Model.Posts.Count == 0)
     {
-        <div class="row post">
+        <div class="row post" id="fake-post">
             Пока ничего нет
         </div>
     }
@@ -122,19 +125,21 @@
     }
     <hr />
     <h2>Новости</h2>
-    @if (Model.SubPosts == null || Model.SubPosts.Count == 0)
-    {
-        <div class="row">
-            Новостей от других пользователей нет (нужно подписаться на них)
-        </div>
-    }
-    else
-    {
-        foreach (var post in Model.SubPosts)
+    <div id="news-container">
+        @if (Model.SubPosts == null || Model.SubPosts.Count == 0)
         {
-            <div class="row post" title="ID: @post.Id">
-                <span class="post-created">@post.Created</span> <span title="Источник" class="post-person">[@post.PersonId]</span> @post.Content
+            <div class="row" id="fake-news">
+                Новостей от других пользователей нет (нужно подписаться на них)
             </div>
         }
-    }
+        else
+        {
+            foreach (var post in Model.SubPosts)
+            {
+                <div class="row post" title="ID: @post.Id">
+                    <span class="post-created">@post.Created</span> <span title="Источник" class="post-person">[@post.PersonId]</span> @post.Content
+                </div>
+            }
+        }
+    </div>
 </div>

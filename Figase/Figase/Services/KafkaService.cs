@@ -6,7 +6,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Figase.Utils
+namespace Figase.Services
 {
     public class KafkaService
     {
@@ -26,7 +26,7 @@ namespace Figase.Utils
             {
                 BootstrapServers = optionsWrapper.Value.Host,
                 GroupId = "Otus",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                AutoOffsetReset = AutoOffsetReset.Latest
             };
         }
 
@@ -40,7 +40,8 @@ namespace Figase.Utils
 
         public void Subscribe(string topic, Action<string> callback)
         {
-            Task.Run(() => {
+            Task.Run(() =>
+            {
                 using (var consumer = new ConsumerBuilder<string, string>(consumerConfig).Build())
                 {
                     consumer.Subscribe(topic);
