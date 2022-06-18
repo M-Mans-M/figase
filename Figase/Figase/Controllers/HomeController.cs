@@ -276,6 +276,10 @@ namespace Figase.Controllers
         {
             if (ModelState.IsValid)
             {
+                var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var userId = 0;
+                Int32.TryParse(userIdRaw, out userId);
+
                 var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
                 await connection.OpenAsync();
 
@@ -285,6 +289,9 @@ namespace Figase.Controllers
                 if (model.PageNum <= 0) model.PageNum = 1;
                 if (model.PageSize <= 0) model.PageSize = 30;
 
+                // Не надо показывать самого себя в поиске
+                whereClauses.Add($"Id <> {userIdRaw}");
+
                 var cmdSb = new StringBuilder("SELECT * FROM persons");
                 if (whereClauses.Count > 0)
                 {
@@ -293,11 +300,7 @@ namespace Figase.Controllers
                 }
                 cmdSb.Append($" LIMIT {model.PageSize}");
                 cmdSb.Append($" OFFSET {(model.PageNum - 1) * model.PageSize}");
-
-                var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-                var userId = 0;
-                Int32.TryParse(userIdRaw, out userId);
-
+                
                 // Найти всех на кого подписан этот пользователь
                 //var usersSubbedToMe = new List<int>();
                 //using (var command = new MySqlCommand($"SELECT * FROM Subs WHERE PersonId = {userId}", connection))
@@ -582,6 +585,107 @@ namespace Figase.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Показать чат с пользователем
+        /// </summary>
+        /// <param name="targetUserId">Идентификатор пользователя с которым открыт чат</param>
+        /// <returns></returns>
+        [Authorize]
+        public async Task<IActionResult> Chat(int targetUserId)
+        {
+            int userId = 0;            
+            var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            userId = Int32.Parse(userIdRaw);
+
+            if (userId == targetUserId) Redirect("Search");
+
+            var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+            await connection.OpenAsync();
+
+            List<ChatPost> chatPosts = new List<ChatPost>();
+            using (var command = new MySqlCommand($"SELECT * FROM chatposts WHERE (FromUserId = {userId} AND ToUserId = {targetUserId}) OR (FromUserId = {targetUserId} AND ToUserId = {userId})", connection))
+            {
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var chatPost = fetchChatPost(reader);
+                        if (chatPost != null) chatPosts.Add(chatPost);
+                    }
+                };
+            }
+
+            return View(new ChatModel() { Posts = chatPosts, TargetUserId = targetUserId });
+        }
+
+        /// <summary>
+        /// Отправит сообщение пользователю
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> SendChatPost(SendChatPostModel model)
+        {
+            if (string.IsNullOrEmpty(model?.Message)) return BadRequest();
+            if (model.TargetUserId == 0) return BadRequest();
+
+            var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userId = Int32.Parse(userIdRaw);
+
+            var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
+            if (connection.State != System.Data.ConnectionState.Open) await connection.OpenAsync();
+
+            var post = new ChatPost
+            {
+                FromUserId = userId,
+                ToUserId = model.TargetUserId,                
+                Content = model.Message,
+                Created = DateTime.Now
+            };
+
+            using (var command = new MySqlCommand($"INSERT INTO chatposts(FromUserId, ToUserId, Created, Content) VALUES({post.FromUserId}, {post.ToUserId}, '{post.Created.ToString("yyyy-MM-dd HH:mm:ss")}', '{post.Content.Replace("'", "''")}');", connection))
+            using (var reader = await command.ExecuteReaderAsync())
+                await reader.ReadAsync();
+
+            /*nt addedId = 0;
+
+            MySqlTransaction tran = null;
+            try
+            {
+                tran = connection.BeginTransaction();
+
+                using (var command = new MySqlCommand($"INSERT INTO chatposts(FromUserId, ToUserId, Created, Content) VALUES({post.FromUserId}, {post.ToUserId}, '{post.Created.ToString("yyyy-MM-dd HH:mm:ss")}', '{post.Content.Replace("'", "''")}');", connection, tran))
+                using (var reader = await command.ExecuteReaderAsync())
+                    await reader.ReadAsync();
+
+                using (var command = new MySqlCommand($"SELECT LAST_INSERT_ID();", connection, tran))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            addedId = GetValue<int>(reader.GetValue(0));
+                        }
+                    }
+                }
+
+                tran.Commit();
+            }
+            catch (Exception)
+            {
+                tran?.Rollback();
+            }
+
+
+            post.Id = addedId;
+            return RedirectToAction("Chat", new { targetUserId = model.TargetUserId });
+            */
+
+            await connection.CloseAsync();
+            return Ok();
+        }
+
         #region DatabaseMapping
 
         /// <summary>
@@ -628,6 +732,23 @@ namespace Figase.Controllers
         private T GetValue<T>(object value)
         {
             return (T)Convert.ChangeType(value, typeof(T));
+        }
+
+        /// <summary>
+        /// Маппинг прочитанной строки из БД в модель сообщения чата
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        private ChatPost fetchChatPost(MySqlDataReader reader)
+        {
+            var charPost = new ChatPost();
+            charPost.Id = GetValue<int>(reader.GetValue(0));
+            charPost.FromUserId = GetValue<int>(reader.GetValue(1));
+            charPost.ToUserId = GetValue<int>(reader.GetValue(2));
+            charPost.Created = GetValue<DateTime>(reader.GetValue(3));
+            charPost.Content = GetValue<string>(reader.GetValue(4));
+
+            return charPost;
         }
 
         #endregion DatabaseMapping

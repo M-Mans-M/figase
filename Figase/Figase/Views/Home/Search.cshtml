@@ -147,6 +147,8 @@
 
                             <a href="#" onclick="subscribe(@person.Id, event)" class="@(!person.Subscribed ? "visible" : "collapsed" )">Подписаться</a>
                             <a href="#" onclick="unsubscribe(@person.Id, event)" class="@(person.Subscribed ? "visible" : "collapsed" )">Отписаться</a>
+
+                            <a asp-controller="Home" asp-action="Chat"  asp-route-targetUserId="@person.Id">Чат</a>
                         </td>
                     }
                 </tr>

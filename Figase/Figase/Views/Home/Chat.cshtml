@@ -1,0 +1,77 @@
+﻿@using System.Reflection
+@using Figase.Context;
+@using System.Security.Claims
+@using Figase.Enums
+@using Figase.Utils
+@model ChatModel
+@{
+    ViewData["Title"] = $"Чат";
+}
+@section Scripts {
+<script type="text/javascript">
+    $(document).ready(function() {
+
+    });
+
+    function sendPost() {
+        var msg = $('#Message').val();
+        if (msg) {
+            $.post('@(Url.Action("SendChatPost", "Home", null))', { Message: msg, TargetUserId: @Model.TargetUserId }, function(response) {
+            alert("Успешно!");
+            window.location.reload();
+          }).fail(function(response) {
+            alert("Ошибка " + response.status + "!");
+          });
+        }
+    }
+</script>
+}
+<div class="search-panel">
+    <div class="nav-block">
+        @if (!User.Identity.IsAuthenticated)
+        {
+            <span><b>Пользователь не авторизован</b> </span>
+            <a asp-area="" asp-controller="Home" asp-action="Login">Вход</a>
+        }
+        else
+        {
+            <span><b>@(User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "Unknown")</b> </span>
+            <a asp-controller="Home" asp-action="Profile">Профиль</a>
+            <a asp-controller="Home" asp-action="Search">На главную</a>
+            <a asp-controller="Home" asp-action="Logout">Выйти</a>
+        }
+    </div>
+    <h2>Чатик</h2>
+    <div>
+        @if (Model.Posts == null || Model.Posts.Count == 0)
+        {
+            <div class="row">
+                Сообщений нет, будь первым!
+            </div>
+        }
+        else
+        {
+            foreach (var post in Model.Posts)
+            {
+                var isMyPost = post.FromUserId.ToString() == User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                
+                <div class="row post @(isMyPost ? "my-post" : "")" title="ID: @post.Id">
+                    <span class="post-created">@post.Created</span> <span title="Источник" class="post-person">[@post.FromUserId]</span> @post.Content
+                </div>
+            }
+        }
+    </div>
+    <div class="new-post">
+        <span>Написать в чат:</span>
+        <div class="row">
+            <div class="col-md-12">
+                <input type="text" id="Message" name="Message" class="form-control" maxlength="1000" />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <input type="button" value="Отправить" class="btn btn-default" onclick="sendPost()" />
+            </div>
+        </div>
+    </div>
+</div>

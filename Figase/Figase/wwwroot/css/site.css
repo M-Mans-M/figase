@@ -168,6 +168,9 @@ input[type="submit"] {
     font-size: 12px;
     margin-top: 5px
 }
+.row.post.my-post {
+    background: #ccffcc;
+}
 
 .row.post span.post-person {
     margin-right: 10px;
