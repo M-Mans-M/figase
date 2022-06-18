@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Figase.Context
+namespace ChatModule.Content
 {
     /**
      * CREATE TABLE chatposts (

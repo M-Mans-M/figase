@@ -1,16 +1,16 @@
-using Figase.Hubs;
-using Figase.Options;
-using Figase.Services;
-using Figase.Utils;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using ChatModule.Utils;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MySqlConnector;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace Figase
+namespace ChatModule
 {
     public class Startup
     {
@@ -24,25 +24,10 @@ namespace Figase
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllersWithViews();
-            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(x => x.LoginPath = "/Home/Login");
-
-            // Other configuration code
-            services.AddMvc(options =>
-            {
-                options.ModelBinderProviders.Insert(0, new FlagsEnumModelBinderProvider());
-            });
-
-            //services.AddDbContext<MySqlContext>(options =>
-            //    options.UseMySQL(Configuration.GetConnectionString("MySqlDatabase")));
+            services.AddControllers();
+            services.AddMvc();
 
             services.AddTransient<MySqlConnection>(_ => new MySqlConnection(Configuration.GetConnectionString("MySqlDatabase")));
-
-            services.Configure<KafkaOptions>(Configuration.GetSection(KafkaOptions.Section));
-            services.AddSingleton<KafkaService, KafkaService>();
-            services.AddSingleton<MainService, MainService>();
-
-            services.AddSignalR();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,14 +39,12 @@ namespace Figase
             }
             else
             {
-                app.UseExceptionHandler("/Home/Error");
+                app.UseExceptionHandler("/Error");
             }
-            app.UseStaticFiles();
-                        
-            app.UseRouting();
 
-            app.UseAuthentication();
-            app.UseAuthorization();
+            //app.UseStaticFiles();
+
+            app.UseRouting();
 
             app.UseMiddleware<RequestLoggingMiddleware>();
 
@@ -69,8 +52,7 @@ namespace Figase
             {
                 endpoints.MapControllerRoute(
                     name: "default",
-                    pattern: "{controller=Home}/{action=Search}/{id?}");
-                endpoints.MapHub<NewsHub>("/newsHub");
+                    pattern: "{controller=Service}/{action=Version}");
             });
         }
     }

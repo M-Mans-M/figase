@@ -5,7 +5,9 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Figase", "Figase\Figase.csproj", "{550C0994-29DC-435C-A2C3-FFF62F256095}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataUploader", "DataUploader\DataUploader.csproj", "{3F48827B-8500-473B-BC19-908E077B7E79}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataUploader", "DataUploader\DataUploader.csproj", "{3F48827B-8500-473B-BC19-908E077B7E79}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatModule", "ChatModule\ChatModule.csproj", "{A8473037-B440-430B-990C-FF5389FFDE2F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{3F48827B-8500-473B-BC19-908E077B7E79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3F48827B-8500-473B-BC19-908E077B7E79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3F48827B-8500-473B-BC19-908E077B7E79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8473037-B440-430B-990C-FF5389FFDE2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8473037-B440-430B-990C-FF5389FFDE2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8473037-B440-430B-990C-FF5389FFDE2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8473037-B440-430B-990C-FF5389FFDE2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

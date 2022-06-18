@@ -1,8 +1,8 @@
-﻿using Figase.Models;
+﻿using ChatModule.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Figase.Controllers
+namespace ChatModule.Controllers
 {
     [ApiController]
     [Route("[controller]")]

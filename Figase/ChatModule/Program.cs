@@ -4,13 +4,17 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog.Web;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 
-namespace Figase
+namespace ChatModule
 {
     public class Program
     {
         public static void Main(string[] args)
-      {
+        {
             CreateHostBuilder(args).Build().Run();
         }
 
@@ -24,6 +28,10 @@ namespace Figase
             .ConfigureWebHostDefaults(webBuilder =>
             {
                 webBuilder.UseStartup<Startup>();
+                webBuilder.ConfigureKestrel(options =>
+                {
+                    options.Listen(IPAddress.Any, 5001);
+                });
             })
             .ConfigureLogging((hostingContext, logging) =>
             {
