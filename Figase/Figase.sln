@@ -7,7 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Figase", "Figase\Figase.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataUploader", "DataUploader\DataUploader.csproj", "{3F48827B-8500-473B-BC19-908E077B7E79}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatModule", "ChatModule\ChatModule.csproj", "{A8473037-B440-430B-990C-FF5389FFDE2F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChatModule", "ChatModule\ChatModule.csproj", "{A8473037-B440-430B-990C-FF5389FFDE2F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightId", "LightId\LightId.csproj", "{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{A8473037-B440-430B-990C-FF5389FFDE2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A8473037-B440-430B-990C-FF5389FFDE2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A8473037-B440-430B-990C-FF5389FFDE2F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
