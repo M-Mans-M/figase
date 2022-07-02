@@ -21,6 +21,7 @@ namespace Figase.Context
         }
 
         public bool Subscribed { get; set; }
+        public int UnreadMessages { get; set; }
 
         public List<PersonPost> Posts { get; set; }
         public List<PersonPost> SubPosts { get; set; }

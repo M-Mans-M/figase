@@ -1,6 +1,5 @@
 ﻿using Confluent.Kafka;
 using Confluent.Kafka.Admin;
-using Figase.Options;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
@@ -10,8 +9,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using UnreadMessagesCounter.Options;
 
-namespace Figase.Services
+namespace UnreadMessagesCounter.Services
 {
     public class KafkaService
     {
@@ -39,7 +39,7 @@ namespace Figase.Services
             adminConfig = new AdminClientConfig { BootstrapServers = optionsWrapper.Value.Host };
         }
 
-        public async Task ProduceAsync(string topic, string message, Dictionary<string, string> additionalInfo = null)
+        public async Task ProduceAsync(string topic, string message, Dictionary<string,string> additionalInfo = null)
         {
             ensureTopicExists(topic);
 
@@ -57,7 +57,7 @@ namespace Figase.Services
             }
         }
 
-        public void Subscribe(string topic, Action<string, Dictionary<string, string>> callback)
+        public void Subscribe(string topic, Action<string, Dictionary<string,string>> callback)
         {
             ensureTopicExists(topic);
 

@@ -22,7 +22,7 @@ namespace Figase.Services
             kafkaService.Subscribe(newPostTopic, processNewPost);
         }
 
-        private void processNewPost(string message)
+        private void processNewPost(string message, Dictionary<string, string> headers)
         {
             var personPost = Newtonsoft.Json.JsonConvert.DeserializeObject<PersonPost>(message);
 

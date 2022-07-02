@@ -184,3 +184,14 @@ input[type="submit"] {
 .collapsed {
     display: none;
 }
+
+.unread-messages {
+    display: inline-block;
+    border-radius: 50%;
+    background: green;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 18px;
+    color: white;
+}

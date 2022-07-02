@@ -8,7 +8,7 @@
 		<AssemblyVersion>1.0.2.0</AssemblyVersion>
 		<Company>Mans Inc.</Company>
 		<Authors>Mansurov Marat</Authors>
-		<Product>Figase</Product>
+		<Product>ChatModule</Product>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataUploader", "DataUploade
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChatModule", "ChatModule\ChatModule.csproj", "{A8473037-B440-430B-990C-FF5389FFDE2F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightId", "LightId\LightId.csproj", "{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightId", "LightId\LightId.csproj", "{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnreadMessagesCounter", "UnreadMessagesCounter\UnreadMessagesCounter.csproj", "{7BCCC3FE-F0F3-43D0-95A3-8CF09A07CD81}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1FA61FF-8610-45AA-9AAC-25EC8FB54989}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BCCC3FE-F0F3-43D0-95A3-8CF09A07CD81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BCCC3FE-F0F3-43D0-95A3-8CF09A07CD81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BCCC3FE-F0F3-43D0-95A3-8CF09A07CD81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BCCC3FE-F0F3-43D0-95A3-8CF09A07CD81}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

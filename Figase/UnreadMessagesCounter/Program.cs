@@ -4,9 +4,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog.Web;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 
-namespace Figase
+namespace UnreadMessagesCounter
 {
     public class Program
     {
@@ -27,7 +30,7 @@ namespace Figase
                 webBuilder.UseStartup<Startup>();
                 webBuilder.ConfigureKestrel(options =>
                 {
-                    options.Listen(IPAddress.Any, 5000);
+                    options.Listen(IPAddress.Any, 5002);
                 });
             })
             .ConfigureLogging((hostingContext, logging) =>

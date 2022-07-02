@@ -29,15 +29,18 @@ namespace Figase.Controllers
         private readonly IServiceProvider serviceProvider;
         private readonly KafkaService kafkaService;
         private readonly MainService mainService;
+        private readonly CounterSagaService counterSagaService;
 
         private readonly string chatModuleUrl = "http://192.168.27.50:5001";
+        //private readonly string chatModuleUrl = "http://127.0.0.1:5001";
 
-        public HomeController(ILogger<HomeController> logger, IServiceProvider serviceProvider, MainService mainService, KafkaService kafkaService)
+        public HomeController(ILogger<HomeController> logger, IServiceProvider serviceProvider, MainService mainService, KafkaService kafkaService, CounterSagaService counterSagaService)
         {
             this.logger = logger;
             this.serviceProvider = serviceProvider;
             this.kafkaService = kafkaService;
             this.mainService = mainService;
+            this.counterSagaService = counterSagaService;
         }
 
         [Authorize]
@@ -286,16 +289,18 @@ namespace Figase.Controllers
                 var connection = serviceProvider.GetService(typeof(MySqlConnection)) as MySqlConnection;
                 await connection.OpenAsync();
 
+                //SELECT p.*,c.count FROM persons p LEFT JOIN counters c ON p.Id = c.toUserId AND c.fromUserId = 1000007 WHERE p.FirstName like '%user%' or p.LastName like '%user%';
+
                 var whereClauses = new List<string>();
-                if (!string.IsNullOrEmpty(model.FirstNamePrefix)) whereClauses.Add($"FirstName LIKE '{model.FirstNamePrefix}%'");
-                if (!string.IsNullOrEmpty(model.LastNamePrefix)) whereClauses.Add($"LastName LIKE '{model.FirstNamePrefix}%'");
+                if (!string.IsNullOrEmpty(model.FirstNamePrefix)) whereClauses.Add($"FirstName LIKE '%{model.FirstNamePrefix}%'");
+                if (!string.IsNullOrEmpty(model.LastNamePrefix)) whereClauses.Add($"LastName LIKE '%{model.FirstNamePrefix}%'");
                 if (model.PageNum <= 0) model.PageNum = 1;
                 if (model.PageSize <= 0) model.PageSize = 30;
 
                 // Не надо показывать самого себя в поиске
                 if (userId != 0) whereClauses.Add($"Id <> {userIdRaw}");
 
-                var cmdSb = new StringBuilder("SELECT * FROM persons");
+                var cmdSb = new StringBuilder($"SELECT p.*, c.count FROM persons p LEFT JOIN counters c ON p.Id = c.fromUserId AND c.toUserId = {userId}");
                 if (whereClauses.Count > 0)
                 {
                     cmdSb.Append($" WHERE");
@@ -323,10 +328,13 @@ namespace Figase.Controllers
                             {
                                 personsViewModels ??= new List<PersonViewModel>();
                                 var person = fetchPerson(reader);
-
+                                
                                 var viewModel = new PersonViewModel(person);
                                 if (userId != 0 && mainService.subsCache.TryGetValue(userId, out var subsList))
                                     viewModel.Subscribed = subsList.ContainsKey(viewModel.Id);
+
+                                var unreadMessages = reader.GetValue(9);
+                                viewModel.UnreadMessages = unreadMessages as int? == null ? 0 : GetValue<int>(unreadMessages);
 
                                 personsViewModels.Add(viewModel);
                             }
@@ -353,6 +361,7 @@ namespace Figase.Controllers
         /// <param name="model">Модель авторизации</param>
         /// <returns></returns>
         [HttpPost]
+        [Obsolete("Не использовать, не обновлялось")]
         public async Task<IActionResult> ApiSearch([FromBody] SearchModel model)
         {
             if (ModelState.IsValid)
@@ -612,10 +621,24 @@ namespace Figase.Controllers
 
             if (userId == targetUserId) Redirect("Search");
 
-            var url = new Uri(new Uri(chatModuleUrl), $"chat/history?fromUserId={userId}&toUserId={targetUserId}").ToString();
+            // Отправляем повышение счётчика через сагу
+            try
+            {
+                var sagaResult = await counterSagaService.TryResetCounterAsync(targetUserId, userId);
+                if (sagaResult != "OK")
+                {
+                    return StatusCode((int)HttpStatusCode.ExpectationFailed);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
 
             try
             {
+                // Отправляем само сообщение
+                var url = new Uri(new Uri(chatModuleUrl), $"chat/history?fromUserId={userId}&toUserId={targetUserId}").ToString();
                 var chatModelResult = await HttpSender.SendFull<ChatModel>(System.Net.Http.HttpMethod.Get, url);
 
                 if (chatModelResult.Item2 == HttpStatusCode.OK) return View(chatModelResult.Item1);
@@ -642,9 +665,23 @@ namespace Figase.Controllers
             var userIdRaw = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             var userId = Int32.Parse(userIdRaw);
 
-            var url = new Uri(new Uri(chatModuleUrl), $"chat/post").ToString();
+            // Отправляем повышение счётчика через сагу
             try
             {
+                var sagaResult = await counterSagaService.TryIncreaseCounterAsync(userId, model.TargetUserId);
+                if (sagaResult != "OK")
+                {
+                    return StatusCode((int)HttpStatusCode.ExpectationFailed);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+
+            try
+            {
+                var url = new Uri(new Uri(chatModuleUrl), $"chat/post").ToString();
                 var postResult = await HttpSender.Send(System.Net.Http.HttpMethod.Post, url, new { Message = model.Message, FromUserId = userId, ToUserId = model.TargetUserId });
 
                 return StatusCode((int)postResult);
