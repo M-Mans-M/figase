@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog.Web;
@@ -18,19 +19,33 @@ namespace ChatModule
             CreateHostBuilder(args).Build().Run();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            IConfiguration configuration = null;
+
+            return Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((hostingContext, config) =>
             {
                 config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory);
                 if (args != null) config.AddCommandLine(args);
+            })
+            .ConfigureServices((context, services) =>
+            {
+                configuration = context.Configuration;
+                services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(context.Configuration);
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
                 webBuilder.UseStartup<Startup>();
                 webBuilder.ConfigureKestrel(options =>
                 {
-                    options.Listen(IPAddress.Any, 5001);
+                    var portRaw = configuration["Host:Port"];
+                    int port = 0;
+                    if (string.IsNullOrEmpty(portRaw) || !int.TryParse(portRaw, out port))
+                        port = 5001;
+
+                    Console.WriteLine("Listening " + port);
+                    options.Listen(IPAddress.Any, port);
                 });
             })
             .ConfigureLogging((hostingContext, logging) =>
@@ -41,5 +56,6 @@ namespace ChatModule
                 logging.SetMinimumLevel(LogLevel.Trace);
             })
             .UseNLog();
+        }            
     }
 }
