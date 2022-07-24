@@ -59,6 +59,7 @@ namespace ChatModule
 
             app.UseRouting();
 
+            /*
             //app.UseHttpMetrics();
             app.UseHttpMetrics(options =>
             {
@@ -66,9 +67,10 @@ namespace ChatModule
                 // For example: 200, 201, 203 -> 2xx
                 options.ReduceStatusCodeCardinality();
             });
-
-            //app.RegisterWithConsul(lifetime);
             app.UseMiddleware<RequestLoggingMiddleware>();
+            */
+            
+            //app.RegisterWithConsul(lifetime);
             
             //app.WarmZabbixRedMeticsService();
             //app.UseMiddleware<ZabbixRedMeticsMiddleware>();
@@ -79,7 +81,7 @@ namespace ChatModule
                     name: "default",
                     pattern: "{controller=Service}/{action=Version}");
 
-                endpoints.MapMetrics();
+                //endpoints.MapMetrics();
             });
         }
     }
