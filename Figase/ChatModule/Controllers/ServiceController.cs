@@ -1,6 +1,7 @@
 ﻿using ChatModule.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading;
 
 namespace ChatModule.Controllers
 {
@@ -22,6 +23,23 @@ namespace ChatModule.Controllers
         public IActionResult Version()
         {
             return Ok(new ApiVersionResponseModel());
+        }
+
+        [HttpGet]
+        [Route("test_error")]
+        [AllowAnonymous]
+        public IActionResult Test_Error()
+        {
+            return StatusCode(500);
+        }
+
+        [HttpGet]
+        [Route("test_delay")]
+        [AllowAnonymous]
+        public IActionResult Test_Delay()
+        {
+            Thread.Sleep(100);
+            return StatusCode(200);
         }
     }
 }

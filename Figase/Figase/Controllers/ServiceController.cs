@@ -28,6 +28,7 @@ namespace Figase.Controllers
             return Ok(new ApiVersionResponseModel());
         }
 
+        /*
         [HttpGet]
         [Route("consul")]
         [AllowAnonymous]
@@ -50,5 +51,6 @@ namespace Figase.Controllers
 
             return Ok(serverUrls);
         }
+        */
     }
 }
